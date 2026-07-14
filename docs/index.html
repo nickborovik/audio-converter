@@ -2,43 +2,374 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="vie wport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Audio Converter is an open-source tool for converting audio files between MP3, M4A, OGG, FLAC, and WAV formats. Ideal for batch conversion with customizable settings for optimal audio quality.">
-    <meta name="keywords" content="audio converter, convert audio, MP3 to WAV, M4A to MP3, OGG to WAV, FLAC to MP3, batch audio conversion, open-source audio converter">
-    <meta name="author" content="Your Name or Organization">
-    <title>Audio Converter | Convert MP3, M4A, OGG, FLAC, WAV</title>
-    <link rel="canonical" href="https://yourusername.github.io/universal-audio-converter" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Browser-based audio converter. Convert MP3, M4A, OGG, FLAC, WAV locally in your browser using ffmpeg.wasm.">
+    <meta name="keywords" content="audio converter, MP3, WAV, M4A, OGG, FLAC, ffmpeg wasm, in-browser converter">
+    <title>Audio Converter</title>
+    <link rel="canonical" href="https://nickborovik.github.io/audio-converter/" />
     <style>
+        :root {
+            --bg: #fafafa;
+            --fg: #1a1a1a;
+            --muted: #666;
+            --border: #e0e0e0;
+            --accent: #1a1a1a;
+            --accent-fg: #fff;
+        }
+        * { box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
-            margin: 40px auto;
-            max-width: 800px;
-            line-height: 1.6;
-            font-size: 18px;
-            color: #333;
-            padding: 0 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 0;
+            padding: 48px 24px;
+            background: var(--bg);
+            color: var(--fg);
+            line-height: 1.5;
         }
-        h1, h2 {
-            color: #555;
+        main {
+            max-width: 560px;
+            margin: 0 auto;
         }
-        a {
-            color: #0575E6;
+        h1 {
+            font-weight: 500;
+            font-size: 1.5rem;
+            margin: 0 0 8px;
         }
-        a:hover {
-            color: #014F86;
+        p.lead {
+            color: var(--muted);
+            margin: 0 0 32px;
+            font-size: 0.95rem;
         }
+        .row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+        label {
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+        .picker {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .picker .path {
+            flex: 1;
+            font-family: ui-monospace, SFMono-Regular, monospace;
+            font-size: 0.85rem;
+            color: var(--fg);
+            background: #fff;
+            border: 1px solid var(--border);
+            padding: 8px 10px;
+            border-radius: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+        }
+        button, select {
+            font-family: inherit;
+            font-size: 0.9rem;
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--fg);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover:not(:disabled) { border-color: var(--fg); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button.primary {
+            background: var(--accent);
+            color: var(--accent-fg);
+            border-color: var(--accent);
+            width: 100%;
+            padding: 12px;
+            font-size: 0.95rem;
+            margin-top: 8px;
+        }
+        select { width: 100%; }
+        progress {
+            width: 100%;
+            height: 6px;
+            margin-top: 16px;
+        }
+        #log {
+            margin-top: 16px;
+            font-family: ui-monospace, monospace;
+            font-size: 0.8rem;
+            color: var(--muted);
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 180px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            display: none;
+        }
+        .notice {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .notice a { color: var(--fg); }
+        input[type="file"] { display: none; }
     </style>
 </head>
 <body>
+<main>
     <h1>Audio Converter</h1>
-    <p>This open-source tool helps you seamlessly convert between popular audio formats such as MP3, M4A, OGG, FLAC, and WAV. Ideal for musicians, podcasters, and audio enthusiasts, Audio Converter supports high-quality conversions with customizable settings.</p>
-    <h2>Key Features</h2>
-    <ul>
-        <li>Convert audio between MP3, M4A, OGG, FLAC, and WAV formats.</li>
-        <li>Batch conversion to save time.</li>
-        <li>Cross-platform compatibility (Windows, macOS, Linux).</li>
-    </ul>
-    <h2>Getting Started</h2>
-    <p>To get started with Audio Converter, visit our <a href="https://github.com/mottaviani-dev/audio-converter">GitHub repository</a>.</p>
+    <p class="lead">Runs in your browser. No upload. Powered by ffmpeg.wasm.</p>
+
+    <div class="row">
+        <label>Input folder</label>
+        <div class="picker">
+            <span class="path" id="inputPath">No folder selected</span>
+            <button id="pickInput">Choose</button>
+        </div>
+    </div>
+
+    <div class="row">
+        <label>Output folder</label>
+        <div class="picker">
+            <span class="path" id="outputPath">No folder selected</span>
+            <button id="pickOutput">Choose</button>
+        </div>
+    </div>
+
+    <div class="row">
+        <label for="format">Output format</label>
+        <select id="format">
+            <option value="mp3">MP3</option>
+            <option value="wav">WAV</option>
+            <option value="ogg">OGG</option>
+            <option value="flac">FLAC</option>
+            <option value="m4a">M4A</option>
+        </select>
+    </div>
+
+    <button class="primary" id="convert" disabled>Convert</button>
+
+    <progress id="progress" value="0" max="1" style="display:none"></progress>
+    <div id="log"></div>
+
+    <input type="file" id="inputFallback" webkitdirectory directory multiple>
+
+    <p class="notice">
+        Folder picker requires a Chromium browser (Chrome, Edge, Brave). On Firefox/Safari, files are downloaded individually.
+        <br><a href="https://github.com/nickborovik/audio-converter">Source on GitHub</a>
+    </p>
+</main>
+
+<script src="vendor/ffmpeg.js"></script>
+<script src="vendor/ffmpeg-util.js"></script>
+<script>
+    const { FFmpeg } = FFmpegWASM;
+    const { fetchFile, toBlobURL } = FFmpegUtil;
+
+    const AUDIO_EXTS = new Set(["mp3", "m4a", "ogg", "flac", "wav", "aac", "opus", "wma"]);
+    const hasFSAccess = typeof window.showDirectoryPicker === "function";
+
+    const $ = (id) => document.getElementById(id);
+    const inputPathEl = $("inputPath");
+    const outputPathEl = $("outputPath");
+    const pickInputBtn = $("pickInput");
+    const pickOutputBtn = $("pickOutput");
+    const formatSel = $("format");
+    const convertBtn = $("convert");
+    const progressEl = $("progress");
+    const logEl = $("log");
+    const fallbackInput = $("inputFallback");
+
+    let inputHandle = null;
+    let outputHandle = null;
+    let fallbackFiles = null;
+
+    function log(msg) {
+        logEl.style.display = "block";
+        logEl.textContent += msg + "\n";
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function updateConvertState() {
+        const hasInput = inputHandle || (fallbackFiles && fallbackFiles.length);
+        convertBtn.disabled = !hasInput;
+    }
+
+    async function pickInput() {
+        if (hasFSAccess) {
+            try {
+                inputHandle = await window.showDirectoryPicker({ id: "audio-in", mode: "read" });
+                inputPathEl.textContent = inputHandle.name;
+                fallbackFiles = null;
+            } catch (e) { if (e.name !== "AbortError") log("Input pick error: " + e.message); }
+        } else {
+            fallbackInput.click();
+        }
+        updateConvertState();
+    }
+
+    async function pickOutput() {
+        if (hasFSAccess) {
+            try {
+                outputHandle = await window.showDirectoryPicker({ id: "audio-out", mode: "readwrite" });
+                outputPathEl.textContent = outputHandle.name;
+            } catch (e) { if (e.name !== "AbortError") log("Output pick error: " + e.message); }
+        } else {
+            outputPathEl.textContent = "Downloads (browser default)";
+        }
+        updateConvertState();
+    }
+
+    fallbackInput.addEventListener("change", (e) => {
+        fallbackFiles = Array.from(e.target.files);
+        inputPathEl.textContent = `${fallbackFiles.length} file(s) selected`;
+        inputHandle = null;
+        updateConvertState();
+    });
+
+    pickInputBtn.addEventListener("click", pickInput);
+    pickOutputBtn.addEventListener("click", pickOutput);
+
+    async function* walkDir(dirHandle, prefix = "") {
+        for await (const entry of dirHandle.values()) {
+            const path = prefix ? `${prefix}/${entry.name}` : entry.name;
+            if (entry.kind === "file") {
+                const ext = entry.name.split(".").pop().toLowerCase();
+                if (AUDIO_EXTS.has(ext)) yield { handle: entry, path, ext };
+            } else if (entry.kind === "directory") {
+                yield* walkDir(entry, path);
+            }
+        }
+    }
+
+    async function ensureDir(rootHandle, relPath) {
+        const parts = relPath.split("/").filter(Boolean);
+        let cur = rootHandle;
+        for (const part of parts) {
+            cur = await cur.getDirectoryHandle(part, { create: true });
+        }
+        return cur;
+    }
+
+    async function writeToOutput(outHandle, relPath, filename, data) {
+        const dir = relPath ? await ensureDir(outHandle, relPath) : outHandle;
+        const fileHandle = await dir.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(data);
+        await writable.close();
+    }
+
+    function download(filename, data) {
+        const blob = new Blob([data]);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    let ffmpeg = null;
+    async function loadFFmpeg() {
+        if (ffmpeg) return ffmpeg;
+        log("Loading ffmpeg.wasm...");
+        const instance = new FFmpeg();
+        instance.on("log", ({ message }) => console.log("[ffmpeg]", message));
+        const coreBase = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd";
+        try {
+            await instance.load({
+                coreURL: await toBlobURL(`${coreBase}/ffmpeg-core.js`, "text/javascript"),
+                wasmURL: await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, "application/wasm"),
+                classWorkerURL: new URL("vendor/worker.js", document.baseURI).href,
+            });
+        } catch (e) {
+            log("Load failed: " + (e.message || e));
+            throw e;
+        }
+        ffmpeg = instance;
+        log("ffmpeg ready.");
+        return ffmpeg;
+    }
+
+    async function collectJobs() {
+        const jobs = [];
+        if (inputHandle) {
+            for await (const item of walkDir(inputHandle)) {
+                const file = await item.handle.getFile();
+                const parts = item.path.split("/");
+                const filename = parts.pop();
+                const relDir = parts.join("/");
+                jobs.push({ file, filename, relDir, ext: item.ext });
+            }
+        } else if (fallbackFiles) {
+            for (const file of fallbackFiles) {
+                const ext = file.name.split(".").pop().toLowerCase();
+                if (!AUDIO_EXTS.has(ext)) continue;
+                const parts = (file.webkitRelativePath || file.name).split("/");
+                const filename = parts.pop();
+                parts.shift();
+                jobs.push({ file, filename, relDir: parts.join("/"), ext });
+            }
+        }
+        return jobs;
+    }
+
+    convertBtn.addEventListener("click", async () => {
+        convertBtn.disabled = true;
+        pickInputBtn.disabled = true;
+        pickOutputBtn.disabled = true;
+        logEl.textContent = "";
+        progressEl.style.display = "block";
+        progressEl.value = 0;
+
+        try {
+            const outFormat = formatSel.value;
+            const ff = await loadFFmpeg();
+            const jobs = await collectJobs();
+            if (!jobs.length) { log("No audio files found."); return; }
+            log(`Found ${jobs.length} file(s). Converting to ${outFormat.toUpperCase()}...`);
+            progressEl.max = jobs.length;
+
+            for (let i = 0; i < jobs.length; i++) {
+                const { file, filename, relDir, ext } = jobs[i];
+                const inName = `in_${i}.${ext}`;
+                const outBase = filename.replace(/\.[^.]+$/, "");
+                const outName = `out_${i}.${outFormat}`;
+                await ff.writeFile(inName, await fetchFile(file));
+                await ff.exec(["-i", inName, outName]);
+                const data = await ff.readFile(outName);
+                await ff.deleteFile(inName);
+                await ff.deleteFile(outName);
+
+                const finalName = `${outBase}.${outFormat}`;
+                if (outputHandle) {
+                    await writeToOutput(outputHandle, relDir, finalName, data);
+                } else {
+                    download(finalName, data);
+                }
+                progressEl.value = i + 1;
+                log(`[${i + 1}/${jobs.length}] ${filename} -> ${finalName}`);
+            }
+            log("Done.");
+        } catch (e) {
+            log("Error: " + (e.message || e));
+        } finally {
+            convertBtn.disabled = false;
+            pickInputBtn.disabled = false;
+            pickOutputBtn.disabled = false;
+        }
+    });
+
+    if (!hasFSAccess) {
+        outputPathEl.textContent = "Downloads (browser default)";
+    }
+</script>
 </body>
 </html>
